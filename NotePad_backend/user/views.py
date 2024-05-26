@@ -73,3 +73,8 @@ def register(request):
 
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+    
+@csrf_exempt
+def userinfo(request):
+    
+    pass
