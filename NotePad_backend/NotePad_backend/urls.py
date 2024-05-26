@@ -20,5 +20,6 @@ from user import views
 urlpatterns = [
     path('index/', views.index, name='index'),
     path('register/', views.register, name='register'),
-    path('login/', views.login, name='login'),
+    path('login/', views.login_in, name='login'),
+    path('userinfo/', views.userinfo, name='userinfo'),
 ]
