@@ -15,6 +15,7 @@ python manage.py runserver
 已完成
 #### 个人信息
 用户名、头像、昵称、个人简介。
+GET:
 ```json
 {
     "userinfo": {
@@ -23,6 +24,15 @@ python manage.py runserver
         "nickname": "string",
         "bio": "string"
     }
+}
+```
+POST:
+```json
+{
+    "username":"string",
+    "avatat":"url",
+    "nickname":"string",
+    "bios":"string"
 }
 ```
 #### 密码修改
