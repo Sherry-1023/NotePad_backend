@@ -39,31 +39,6 @@ def login_in(request):
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
 
-# def login_in(request):
-#     if request.method == 'POST':
-#         user_name = request.POST.get('username')
-#         pass_word = request.POST.get('password')
-
-#         if not user_name or not pass_word:
-#             return HttpResponseBadRequest("Username and password are required")
-
-#         # 根据用户名获取用户对象
-#         try:
-#             user = User.objects.get(username=user_name)
-#             pwd = user.password
-#         except User.DoesNotExist:
-#             return JsonResponse({'error': 'Invalid username or password'}, status=400)
-
-#         # 验证密码
-#         if pass_word == pwd:
-#             # login(request, user)  # 进行登录操作
-#             return JsonResponse({'message': 'User logged in successfully'}, status=200)
-#         else:
-#             return JsonResponse({'error': 'Invalid username or password'}, status=400)
-
-#     # 如果不是POST请求，返回405 Method Not Allowed
-#     return JsonResponse({'error': 'Method not allowed'}, status=405)
-
 @csrf_exempt
 def register(request):
     if request.method == 'POST':
@@ -92,12 +67,40 @@ def register(request):
         # print(query_user)
         # User.objects.all().delete()
 
-
         return JsonResponse({'message': 'User registered successfully'}, status=200)
 
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
-    
+
+@csrf_exempt
+def modify_pwd(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            user_name = data.get('username')
+            pass_word = data.get('password')
+        
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            # 如果解析失败，返回一个 Bad Request 响应
+            return HttpResponseBadRequest("Invalid JSON")
+        
+        # 用户名存在
+        if User.objects.filter(username=user_name).exists():
+            user = User.objects.get(username=user_name)
+            if pass_word:
+                user.password = pass_word
+            user.save()
+            
+            # query_user = User.objects.values_list('username', 'password')
+            # print(query_user)
+            
+            return JsonResponse({'message': 'Password modified successfully'}, status=200)
+        else:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+    else:
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+
+
 @csrf_exempt
 def userinfo(request):
     if request.method == 'GET':
@@ -117,7 +120,7 @@ def userinfo(request):
             'nickname': user.nickname,
             'bio': user.bio,
         }
-        return JsonResponse({'user_info': user_info}, status=200)
+        return JsonResponse({'userinfo': user_info}, status=200)
 
     elif request.method == 'POST':
         user_name = request.POST.get('username')
@@ -146,5 +149,30 @@ def userinfo(request):
         # User.objects.all().delete()
 
         return JsonResponse({'message': 'User information updated successfully'}, status=200)
+    else:
+        return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+    
+@csrf_exempt
+def noteinfo(request):
+    if request.method == 'GET':
+        user_name = request.GET.get('username')
+
+        if not user_name:
+            return HttpResponseBadRequest("Username is required")
+        
+        try:
+            user = User.objects.get(username=user_name)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+        
+        #TODO
+        note_info = {
+            'username': user.username,
+        }
+        return JsonResponse({'noteinfo': note_info}, status=200)
+
+    elif request.method == 'POST':
+        #TODO
+        return JsonResponse({'message': 'Note information updated successfully'}, status=200)
     else:
         return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
