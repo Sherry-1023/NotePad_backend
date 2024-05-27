@@ -78,7 +78,9 @@ def modify_pwd(request):
         try:
             data = json.loads(request.body.decode('utf-8'))
             user_name = data.get('username')
+            origin_pwd = data.get('origin_pwd')
             pass_word = data.get('password')
+            
         
         except (json.JSONDecodeError, AttributeError, TypeError):
             # 如果解析失败，返回一个 Bad Request 响应
@@ -87,8 +89,10 @@ def modify_pwd(request):
         # 用户名存在
         if User.objects.filter(username=user_name).exists():
             user = User.objects.get(username=user_name)
-            if pass_word:
+            if origin_pwd == user.password:
                 user.password = pass_word
+            else:
+                return JsonResponse({'error': 'The original password is not correct'}, status=400)
             user.save()
             
             # query_user = User.objects.values_list('username', 'password')
