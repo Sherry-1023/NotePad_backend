@@ -51,22 +51,9 @@ POST:
 request
 ```json
 
-{
-    "username":"string"
-    //TODO(根据标签、内容、标题查找还没做)
-}
 ```
 response
 ```json
-{
-    'notes': notes_info = [
-            {
-                'title': note.title,
-                'tags': note.tags,
-                'content': note.content
-            }
-            for note in notes
-        ]
-}
+
 ```
 **笔记详情：** 
