@@ -44,4 +44,26 @@ POST:
     "password":"string"
 }
 ```
-#### 笔记本
+#### 笔记
+分为笔记主页和详情页
+**笔记主页：** 显示当前用户的所有笔记，每一个笔记在主页仅仅显示标题、内容、标签，内容可能需要进行截断只显示一部分（前端），标签前端是否显示？
+接口如下，仅支持GET方法：
+```json
+request
+{
+    "username":"string"
+    //TODO(根据标签、内容、标题查找还没做)
+}
+response
+{
+    'notes': notes_info = [
+            {
+                'title': note.title,
+                'tags': note.tags,
+                'content': note.content
+            }
+            for note in notes
+        ]
+}
+```
+**笔记详情：** 
