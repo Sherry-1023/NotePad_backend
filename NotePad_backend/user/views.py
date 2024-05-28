@@ -4,7 +4,8 @@ from django.views.decorators.csrf import csrf_exempt
 # from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate, login
-from .models import User
+from django.shortcuts import get_object_or_404
+from .models import User, Note
 import json
  
 def index(request):
@@ -155,7 +156,7 @@ def userinfo(request):
         return JsonResponse({'message': 'User information updated successfully'}, status=200)
     else:
         return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
-    
+
 @csrf_exempt
 def noteinfo(request):
     if request.method == 'GET':
@@ -164,19 +165,111 @@ def noteinfo(request):
         if not user_name:
             return HttpResponseBadRequest("Username is required")
         
+        user = get_object_or_404(User, username=user_name)
+        notes = user.notes.all()
+        notes_info = [
+            {
+                'title': note.title,
+                'tags': note.tags,
+                'content': note.content
+            }
+            for note in notes
+        ]
+        # Note.objects.all().delete()
+        return JsonResponse({'notes': notes_info}, status=200)
+    else:
+        return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
+
+
+@csrf_exempt
+def notedetail(request):
+    if request.method == 'GET':
+        note_id = request.GET.get('note_id')
+
+        if not note_id:
+            return HttpResponseBadRequest("Note ID is required")
+
+        note = get_object_or_404(Note, id=note_id)
+        note_detail = {
+            'title': note.title,
+            'tags': note.tags,
+            'content': note.content,
+            'image': note.image.url if note.image else '',
+            'audio': note.audio.url if note.audio else '',
+            'video': note.video.url if note.video else ''
+        }
+        # query_user = Note.objects.values_list('title', 'content', 'image')
+        # print(query_user)
+        return JsonResponse({'notedetail': note_detail}, status=200)
+
+    elif request.method == 'POST':
+        note_id = request.POST.get('note_id')
+        title_ = request.POST.get('title')
+        tags_ = request.POST.get('tags')
+        content_ = request.POST.get('content')
+        image_ = request.FILES.get('image')
+        audio_ = request.FILES.get('audio')
+        video_ = request.FILES.get('video')
+
+        if not note_id:
+            return HttpResponseBadRequest("Note ID is required")
+
+        try:
+            note = Note.objects.get(id=note_id)
+        except Note.DoesNotExist:
+            return JsonResponse({'error': 'Note does not exist'}, status=404)
+
+        if title_:
+            note.title = title_
+        if tags_:
+            note.tags = tags_
+        if content_:
+            note.content = content_
+        if image_:
+            note.image = image_
+        if audio_:
+            note.audio = audio_
+        if video_:
+            note.video = video_
+        note.save()
+
+        return JsonResponse({'message': 'Note updated successfully'}, status=200)
+
+    else:
+        return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+    
+@csrf_exempt
+def createnote(request):
+    if request.method == 'POST':
+        user_name = request.POST.get('username')
+        title_ = request.POST.get('title')
+        tags_ = request.POST.get('tags')
+        content_ = request.POST.get('content')
+        image_ = request.FILES.get('image')
+        audio_ = request.FILES.get('audio')
+        video_ = request.FILES.get('video')
+
+        if not user_name or not title_ or not content_:
+            return HttpResponseBadRequest("Username, title, and content are required")
+
         try:
             user = User.objects.get(username=user_name)
         except User.DoesNotExist:
             return JsonResponse({'error': 'User does not exist'}, status=404)
-        
-        #TODO
-        note_info = {
-            'username': user.username,
-        }
-        return JsonResponse({'noteinfo': note_info}, status=200)
 
-    elif request.method == 'POST':
-        #TODO
-        return JsonResponse({'message': 'Note information updated successfully'}, status=200)
+        note = Note(
+            user=user,
+            title=title_,
+            tags=tags_ if tags_ else '',
+            content=content_,
+            image=image_ if image_ else None,
+            audio=audio_ if audio_ else None,
+            video=video_ if video_ else None
+        )
+        note.save()
+
+        return JsonResponse({'message': 'Note created successfully', 'note_id': note.id}, status=201)
+
     else:
-        return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+    
