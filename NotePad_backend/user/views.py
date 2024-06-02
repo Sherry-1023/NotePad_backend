@@ -161,12 +161,17 @@ def userinfo(request):
 def noteinfo(request):
     if request.method == 'GET':
         user_name = request.GET.get('username')
+        tag_query = request.GET.get('tag')  # 获取标签查询参数
 
         if not user_name:
             return HttpResponseBadRequest("Username is required")
         
         user = get_object_or_404(User, username=user_name)
         notes = user.notes.all()
+        
+        if tag_query:
+            notes = notes.filter(tags__icontains=tag_query)  # 过滤包含指定标签的笔记
+        
         notes_info = [
             {
                 'title': note.title,
@@ -175,7 +180,9 @@ def noteinfo(request):
             }
             for note in notes
         ]
+        
         # Note.objects.all().delete()
+
         return JsonResponse({'notes': notes_info}, status=200)
     else:
         return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
@@ -272,4 +279,8 @@ def createnote(request):
 
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+    
+@csrf_exempt
+def deletenote(request):
+    pass
     

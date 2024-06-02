@@ -26,4 +26,5 @@ urlpatterns = [
     path('modify/', views.modify_pwd, name='modify'),
     path('notedetail/', views.notedetail, name='notedetail'),
     path('createnote/', views.createnote, name='createnote'),
+    path('deletenote/', views.deletenote, name='deletenote'),
 ]
