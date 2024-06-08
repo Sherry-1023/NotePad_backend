@@ -175,6 +175,7 @@ def noteinfo(request):
         
         notes_info = [
             {
+                'id': note.id,
                 'title': note.title,
                 'tags': note.tags,
                 'content': note.content
@@ -283,5 +284,25 @@ def createnote(request):
     
 @csrf_exempt
 def deletenote(request):
-    pass
+    if request.method == 'POST':
+        user_name = request.POST.get('username')
+        note_id = request.POST.get('note_id')
+
+        if not user_name or not note_id:
+            return HttpResponseBadRequest("Username and note ID are required")
+
+        try:
+            user = User.objects.get(username=user_name)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+
+        try:
+            note = Note.objects.get(id=note_id, user=user)
+        except Note.DoesNotExist:
+            return JsonResponse({'error': 'Note does not exist or does not belong to this user'}, status=404)
+
+        note.delete()
+        return JsonResponse({'message': 'Note deleted successfully'}, status=200)
     
+    else:
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
