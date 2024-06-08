@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 # from django.contrib.auth.models import User
@@ -121,7 +121,7 @@ def userinfo(request):
 
         user_info = {
             'username': user.username,
-            'avatar': user.avatar.url if user.avatar else '',
+            'avatar_url': f'/user/{user.id}/avatar/' if user.avatar else '',
             'nickname': user.nickname,
             'bio': user.bio,
         }
@@ -158,6 +158,7 @@ def userinfo(request):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
     else:
         return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+
 @csrf_exempt
 def noteinfo(request):
     if request.method == 'GET':
@@ -202,11 +203,14 @@ def notedetail(request):
         note_detail = {
             'title': note.title,
             'tags': note.tags,
-            'content': note.content,
-            'image': note.image.url if note.image else '',
-            'audio': note.audio.url if note.audio else '',
-            'video': note.video.url if note.video else ''
+            'content': note.content
         }
+        if note.image:
+            note_detail['image_url'] = f'/notes/{note.id}/image/'
+        if note.audio:
+            note_detail['audio_url'] = f'/notes/{note.id}/audio/'
+        if note.video:
+            note_detail['video_url'] = f'/notes/{note.id}/video/'
         # query_user = Note.objects.values_list('title', 'content', 'image')
         # print(query_user)
         return JsonResponse({'notedetail': note_detail}, status=200)
@@ -306,3 +310,44 @@ def deletenote(request):
     
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+
+@csrf_exempt
+def get_avatar(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    if user.avatar:
+        response = HttpResponse(user.avatar, content_type='image/jpeg')
+        response['Content-Disposition'] = f'attachment; filename={user.avatar.name}'
+        return response
+    else:
+        raise Http404("Avatar not found")
+
+
+@csrf_exempt
+def get_note_image(request, note_id):
+    note = get_object_or_404(Note, id=note_id)
+    if note.image:
+        response = HttpResponse(note.image, content_type='image/jpeg')
+        response['Content-Disposition'] = f'attachment; filename={note.image.name}'
+        return response
+    else:
+        raise Http404("Image not found")
+
+@csrf_exempt
+def get_note_audio(request, note_id):
+    note = get_object_or_404(Note, id=note_id)
+    if note.audio:
+        response = HttpResponse(note.audio, content_type='audio/mpeg')
+        response['Content-Disposition'] = f'attachment; filename={note.audio.name}'
+        return response
+    else:
+        raise Http404("Audio not found")
+
+@csrf_exempt
+def get_note_video(request, note_id):
+    note = get_object_or_404(Note, id=note_id)
+    if note.video:
+        response = HttpResponse(note.video, content_type='video/mp4')
+        response['Content-Disposition'] = f'attachment; filename={note.video.name}'
+        return response
+    else:
+        raise Http404("Video not found")

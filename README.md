@@ -159,3 +159,12 @@ response:
     }
 }
 ```
+
+**笔记删除：** username和笔记id是必须项
+request:
+```json
+{
+    "note_id": int,
+    "username": "string"
+}
+```
