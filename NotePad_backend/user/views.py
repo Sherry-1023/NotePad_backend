@@ -7,10 +7,10 @@ from django.contrib.auth import authenticate, login
 from django.shortcuts import get_object_or_404
 from .models import User, Note
 import json
- 
+import logging
 def index(request):
     return HttpResponse('Hello world!')
-
+logger = logging.getLogger(__name__)
 @csrf_exempt
 def login_in(request):
     if request.method == 'POST':
@@ -128,35 +128,36 @@ def userinfo(request):
         return JsonResponse({'userinfo': user_info}, status=200)
 
     elif request.method == 'POST':
-        user_name = request.POST.get('username')
-        avatar_ = request.FILES.get('avatar')  # Use request.FILES for file uploads
-        nick_name = request.POST.get('nickname')
-        bio_ = request.POST.get('bio')
-
-        if not user_name:
-            return HttpResponseBadRequest("Username is required")
-
         try:
-            user = User.objects.get(username=user_name)
-        except User.DoesNotExist:
-            return JsonResponse({'error': 'User does not exist'}, status=404)
+            data = json.loads(request.body.decode('utf-8'))
+            logger.debug("Received POST data: %s", data)  # 添加日志记录
+            user_name = data.get('username')
+            avatar_ = data.get('avatar')
+            nick_name = data.get('nickname')
+            bio_ = data.get('bio')
 
-        if avatar_:
-            user.avatar = avatar_
-        if nick_name:
-            user.nickname = nick_name
-        if bio_:
-            user.bio = bio_
-        user.save()
-        # query_user = User.objects.values('username')
-        query_user = User.objects.values_list('username', 'password', 'nickname', 'bio')
-        print(query_user)
-        # User.objects.all().delete()
+            if not user_name:
+                return HttpResponseBadRequest("Username is required")
 
-        return JsonResponse({'message': 'User information updated successfully'}, status=200)
+            try:
+                user = User.objects.get(username=user_name)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User does not exist'}, status=404)
+
+            if avatar_:
+                user.avatar = avatar_
+            if nick_name:
+                user.nickname = nick_name
+            if bio_:
+                user.bio = bio_
+            user.save()
+
+            return JsonResponse({'message': 'User information updated successfully'}, status=200)
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON data: %s", request.body.decode('utf-8'))  # 添加日志记录
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
     else:
         return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
-
 @csrf_exempt
 def noteinfo(request):
     if request.method == 'GET':
