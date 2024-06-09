@@ -312,8 +312,8 @@ def deletenote(request):
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
 
 @csrf_exempt
-def get_avatar(request, user_id):
-    user = get_object_or_404(User, id=user_id)
+def get_avatar(request, username):
+    user = get_object_or_404(User, username=username)
     if user.avatar:
         response = HttpResponse(user.avatar, content_type='image/jpeg')
         response['Content-Disposition'] = f'attachment; filename={user.avatar.name}'
