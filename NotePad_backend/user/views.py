@@ -8,6 +8,9 @@ from django.shortcuts import get_object_or_404
 from .models import User, Note
 import json
 import logging
+import base64
+from django.core.files.base import ContentFile
+
 def index(request):
     return HttpResponse('Hello world!')
 logger = logging.getLogger(__name__)
@@ -119,19 +122,28 @@ def userinfo(request):
         except User.DoesNotExist:
             return JsonResponse({'error': 'User does not exist'}, status=404)
 
+        avatar_base64 = ''
+        if user.avatar:
+            avatar_base64 = base64.b64encode(user.avatar.read()).decode('utf-8')
+            print("Avatar Base64:", avatar_base64)  # 打印Base64编码的头像字符串
+            
+
         user_info = {
             'username': user.username,
-            'avatar_url': f'/user/{user.username}/avatar/' if user.avatar else '',
+            'avatar_base64': avatar_base64,
             'nickname': user.nickname,
             'bio': user.bio,
         }
         return JsonResponse({'userinfo': user_info}, status=200)
-
     elif request.method == 'POST':
-        user_name = request.POST.get('username')
-        avatar_ = request.FILES.get('avatar')
-        nick_name = request.POST.get('nickname')
-        bio_ = request.POST.get('bio')
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            user_name = data.get('username')
+            avatar_base64 = data.get('avatar')
+            nick_name = data.get('nickname')
+            bio_ = data.get('bio')
+        except (json.JSONDecodeError, AttributeError, TypeError) as e:
+            return HttpResponseBadRequest("Invalid JSON")
 
         if not user_name:
             return HttpResponseBadRequest("Username is required")
@@ -141,18 +153,64 @@ def userinfo(request):
         except User.DoesNotExist:
             return JsonResponse({'error': 'User does not exist'}, status=404)
 
-        if avatar_:
-            user.avatar = avatar_
+        if avatar_base64:
+            try:
+                # 检查是否包含 ';base64,'
+                if ';base64,' in avatar_base64:
+                    format, imgstr = avatar_base64.split(';base64,')
+                    ext = format.split('/')[-1]
+                else:
+                    imgstr = avatar_base64
+                    # 设置默认的扩展名为 'png'，你可以根据实际情况调整
+                    ext = 'png'
+
+                # 尝试解码并保存图片
+                avatar = ContentFile(base64.b64decode(imgstr), name=f'{user_name}.{ext}')
+                user.avatar = avatar
+            except Exception as e:
+                print("Exception occurred while decoding base64 image:", str(e))
+                return HttpResponseBadRequest("Invalid base64 image format")
+        else:
+            print("avatar_base64 is empty or None")
+            return HttpResponseBadRequest("No image provided")
+        
         if nick_name:
             user.nickname = nick_name
         if bio_:
             user.bio = bio_
+        
         user.save()
 
         return JsonResponse({'message': 'User information updated successfully'}, status=200)
 
     else:
-        return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+    # elif request.method == 'POST':
+    #     user_name = request.POST.get('username')
+    #     avatar_ = request.FILES.get('avatar')
+    #     nick_name = request.POST.get('nickname')
+    #     bio_ = request.POST.get('bio')
+
+    #     if not user_name:
+    #         return HttpResponseBadRequest("Username is required")
+
+    #     try:
+    #         user = User.objects.get(username=user_name)
+    #     except User.DoesNotExist:
+    #         return JsonResponse({'error': 'User does not exist'}, status=404)
+
+    #     if avatar_:
+    #         user.avatar = avatar_
+    #     if nick_name:
+    #         user.nickname = nick_name
+    #     if bio_:
+    #         user.bio = bio_
+    #     user.save()
+
+    #     return JsonResponse({'message': 'User information updated successfully'}, status=200)
+
+    # else:
+    #     return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
 
 @csrf_exempt
 def noteinfo(request):
