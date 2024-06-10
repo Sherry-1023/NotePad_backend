@@ -125,7 +125,7 @@ def userinfo(request):
         avatar_base64 = ''
         if user.avatar:
             avatar_base64 = base64.b64encode(user.avatar.read()).decode('utf-8')
-            print("Avatar Base64:", avatar_base64)  # 打印Base64编码的头像字符串
+            # print("Avatar Base64:", avatar_base64)  # 打印Base64编码的头像字符串
             
 
         user_info = {
