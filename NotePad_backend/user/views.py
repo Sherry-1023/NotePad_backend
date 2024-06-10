@@ -121,7 +121,7 @@ def userinfo(request):
 
         user_info = {
             'username': user.username,
-            'avatar_url': f'/user/{user.id}/avatar/' if user.avatar else '',
+            'avatar_url': f'/user/{user.username}/avatar/' if user.avatar else '',
             'nickname': user.nickname,
             'bio': user.bio,
         }
