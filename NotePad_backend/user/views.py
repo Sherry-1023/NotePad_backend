@@ -130,7 +130,7 @@ def userinfo(request):
 
         user_info = {
             'username': user.username,
-            'avatar_base64': avatar_base64,
+            'avatar': avatar_base64,
             'nickname': user.nickname,
             'bio': user.bio,
         }
@@ -185,32 +185,7 @@ def userinfo(request):
 
     else:
         return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
-    # elif request.method == 'POST':
-    #     user_name = request.POST.get('username')
-    #     avatar_ = request.FILES.get('avatar')
-    #     nick_name = request.POST.get('nickname')
-    #     bio_ = request.POST.get('bio')
 
-    #     if not user_name:
-    #         return HttpResponseBadRequest("Username is required")
-
-    #     try:
-    #         user = User.objects.get(username=user_name)
-    #     except User.DoesNotExist:
-    #         return JsonResponse({'error': 'User does not exist'}, status=404)
-
-    #     if avatar_:
-    #         user.avatar = avatar_
-    #     if nick_name:
-    #         user.nickname = nick_name
-    #     if bio_:
-    #         user.bio = bio_
-    #     user.save()
-
-    #     return JsonResponse({'message': 'User information updated successfully'}, status=200)
-
-    # else:
-    #     return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
 
 @csrf_exempt
 def noteinfo(request):
@@ -258,24 +233,30 @@ def notedetail(request):
             'tags': note.tags,
             'content': note.content
         }
+        # 处理图像
         if note.image:
-            note_detail['image_url'] = f'/notes/{note.id}/image/'
+            image_base64 = base64.b64encode(note.image.read()).decode('utf-8')
+            note_detail['image'] = image_base64
+
+        # 处理音频
         if note.audio:
-            note_detail['audio_url'] = f'/notes/{note.id}/audio/'
-        if note.video:
-            note_detail['video_url'] = f'/notes/{note.id}/video/'
+            audio_base64 = base64.b64encode(note.audio.read()).decode('utf-8')
+            note_detail['audio'] = audio_base64
         # query_user = Note.objects.values_list('title', 'content', 'image')
         # print(query_user)
         return JsonResponse({'notedetail': note_detail}, status=200)
 
     elif request.method == 'POST':
-        note_id = request.POST.get('note_id')
-        title_ = request.POST.get('title')
-        tags_ = request.POST.get('tags')
-        content_ = request.POST.get('content')
-        image_ = request.FILES.get('image')
-        audio_ = request.FILES.get('audio')
-        video_ = request.FILES.get('video')
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            note_id = data.get('note_id')
+            title_ = data.get('title')
+            tags_ = data.get('tags')
+            content_ = data.get('content')
+            image_base64 = data.get('image')
+            audio_base64 = data.get('audio')
+        except (json.JSONDecodeError, AttributeError, TypeError) as e:
+            return HttpResponseBadRequest("Invalid JSON")
 
         if not note_id:
             return HttpResponseBadRequest("Note ID is required")
@@ -291,29 +272,56 @@ def notedetail(request):
             note.tags = tags_
         if content_:
             note.content = content_
-        if image_:
-            note.image = image_
-        if audio_:
-            note.audio = audio_
-        if video_:
-            note.video = video_
-        note.save()
 
+        if image_base64:
+            try:
+                if ';base64,' in image_base64:
+                    format, imgstr = image_base64.split(';base64,')
+                    ext = format.split('/')[-1]
+                else:
+                    imgstr = image_base64
+                    ext = 'png'
+
+                image = ContentFile(base64.b64decode(imgstr), name=f'{note_id}_image.{ext}')
+                note.image = image
+            except Exception as e:
+                # print("Exception occurred while decoding base64 image:", str(e))
+                return HttpResponseBadRequest("Invalid base64 image format")
+
+        if audio_base64:
+            try:
+                if ';base64,' in audio_base64:
+                    format, audstr = audio_base64.split(';base64,')
+                    ext = format.split('/')[-1]
+                else:
+                    audstr = audio_base64
+                    ext = 'mp3'
+
+                audio = ContentFile(base64.b64decode(audstr), name=f'{note_id}_audio.{ext}')
+                note.audio = audio
+            except Exception as e:
+                # print("Exception occurred while decoding base64 audio:", str(e))
+                return HttpResponseBadRequest("Invalid base64 audio format")
+
+        note.save()
         return JsonResponse({'message': 'Note updated successfully'}, status=200)
 
     else:
-        return JsonResponse({'error': 'Only GET and POST requests are allowed'}, status=405)
+        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
     
 @csrf_exempt
 def createnote(request):
     if request.method == 'POST':
-        user_name = request.POST.get('username')
-        title_ = request.POST.get('title')
-        tags_ = request.POST.get('tags')
-        content_ = request.POST.get('content')
-        image_ = request.FILES.get('image')
-        audio_ = request.FILES.get('audio')
-        video_ = request.FILES.get('video')
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            user_name = data.get('username')
+            title_ = data.get('title')
+            tags_ = data.get('tags')
+            content_ = data.get('content')
+            image_base64 = data.get('image')
+            audio_base64 = data.get('audio')
+        except (json.JSONDecodeError, AttributeError, TypeError) as e:
+            return HttpResponseBadRequest("Invalid JSON")
 
         if not user_name or not title_ or not content_:
             return HttpResponseBadRequest("Username, title, and content are required")
@@ -327,11 +335,39 @@ def createnote(request):
             user=user,
             title=title_,
             tags=tags_ if tags_ else '',
-            content=content_,
-            image=image_ if image_ else None,
-            audio=audio_ if audio_ else None,
-            video=video_ if video_ else None
+            content=content_
         )
+
+        if image_base64:
+            try:
+                if ';base64,' in image_base64:
+                    format, imgstr = image_base64.split(';base64,')
+                    ext = format.split('/')[-1]
+                else:
+                    imgstr = image_base64
+                    ext = 'png'
+
+                image = ContentFile(base64.b64decode(imgstr), name=f'{user_name}_image.{ext}')
+                note.image = image
+            except Exception as e:
+                # print("Exception occurred while decoding base64 image:", str(e))
+                return HttpResponseBadRequest("Invalid base64 image format")
+
+        if audio_base64:
+            try:
+                if ';base64,' in audio_base64:
+                    format, audstr = audio_base64.split(';base64,')
+                    ext = format.split('/')[-1]
+                else:
+                    audstr = audio_base64
+                    ext = 'mp3'
+
+                audio = ContentFile(base64.b64decode(audstr), name=f'{user_name}_audio.{ext}')
+                note.audio = audio
+            except Exception as e:
+                # print("Exception occurred while decoding base64 audio:", str(e))
+                return HttpResponseBadRequest("Invalid base64 audio format")
+
         note.save()
 
         return JsonResponse({'message': 'Note created successfully', 'note_id': note.id}, status=201)
