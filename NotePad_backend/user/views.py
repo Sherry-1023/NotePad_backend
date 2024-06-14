@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404
 from .models import User, Note
 import json
 import logging
+from django.db.models import Q
+
 import base64
 from django.core.files.base import ContentFile
 
@@ -217,6 +219,37 @@ def noteinfo(request):
         return JsonResponse({'notes': notes_info}, status=200)
     else:
         return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
+@csrf_exempt
+def searchnotes(request):
+    if request.method == 'GET':
+        query = request.GET.get('query')
+        user_name = request.GET.get('username')
+
+        if not query or not user_name:
+            return HttpResponseBadRequest("Query and username are required")
+
+        try:
+            user = User.objects.get(username=user_name)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+
+        notes = user.notes.filter(
+            Q(title__icontains=query) | Q(content__icontains=query)
+        )
+
+        notes_info = [
+            {
+                'id': note.id,
+                'title': note.title,
+                'tags': note.tags,
+                'content': note.content,
+            }
+            for note in notes
+        ]
+
+        return JsonResponse({'notes': notes_info}, status=200)
+    else:
+        return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
 
 
 @csrf_exempt
@@ -377,9 +410,9 @@ def createnote(request):
     
 @csrf_exempt
 def deletenote(request):
-    if request.method == 'POST':
-        user_name = request.POST.get('username')
-        note_id = request.POST.get('note_id')
+    if request.method == 'GET':
+        note_id = request.GET.get('note_id')
+        user_name = request.GET.get('username')
 
         if not user_name or not note_id:
             return HttpResponseBadRequest("Username and note ID are required")
@@ -398,7 +431,7 @@ def deletenote(request):
         return JsonResponse({'message': 'Note deleted successfully'}, status=200)
     
     else:
-        return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+        return JsonResponse({'error': 'Only GET requests are allowed'}, status=405)
 
 @csrf_exempt
 def get_avatar(request, username):
